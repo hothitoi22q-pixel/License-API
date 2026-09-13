@@ -8,7 +8,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret")
 
 USERNAME = os.environ.get("ADMIN_USERNAME", "Jahid")
-PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+PASSWORD = os.environ.get("ADMIN_PASSWORD", "Jahid123")
 
 FILE = "keys.txt"
 TIMEOUT = 60
