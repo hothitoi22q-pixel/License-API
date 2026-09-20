@@ -13,6 +13,27 @@ PASSWORD = os.environ.get("ADMIN_PASSWORD", "@Jahid123#")
 FILE = "keys.txt"
 TIMEOUT = 60
 
+# =========================
+# App এর সর্বনিম্ন version -
+# এর নিচের version চলবে না।
+# রিডিপ্লয় ছাড়াই বদলাতে চাইলে
+# Railway এর Environment Variables
+# এ MIN_VERSION সেট করে দিলেই হবে
+# =========================
+MIN_VERSION = os.environ.get("MIN_VERSION", "1.0.0")
+
+
+# ================= VERSION HELPERS =================
+def version_tuple(value):
+    try:
+        return tuple(int(part) for part in value.strip().split("."))
+    except Exception:
+        return (0,)
+
+
+def is_version_outdated(client_version, min_version):
+    return version_tuple(client_version) < version_tuple(min_version)
+
 
 # ================= LOAD KEYS =================
 def load_keys():
@@ -255,14 +276,31 @@ def check_key(key):
     key = key.strip().upper()
 
     device = request.args.get("device")
+    client_version = request.args.get("version", "")
 
-    # Old version protection
+    # Old version protection (no device param at all)
     if not device:
 
         return jsonify({
             "key": key,
             "status": "update_required",
-            "valid": False
+            "valid": False,
+            "min_version": MIN_VERSION
+        })
+
+    # =========================
+    # Version gate - client এর
+    # version না পাঠালে বা
+    # MIN_VERSION এর চেয়ে কম হলে
+    # চালাতে দেওয়া হবে না
+    # =========================
+    if not client_version or is_version_outdated(client_version, MIN_VERSION):
+
+        return jsonify({
+            "key": key,
+            "status": "update_required",
+            "valid": False,
+            "min_version": MIN_VERSION
         })
 
     keys = load_keys()
@@ -299,7 +337,8 @@ def check_key(key):
                 return jsonify({
                     "key": k,
                     "status": status,
-                    "valid": False
+                    "valid": False,
+                    "min_version": MIN_VERSION
                 })
 
             # First activation
@@ -322,7 +361,8 @@ def check_key(key):
                 return jsonify({
                     "key": k,
                     "status": "already_running_on_other_device",
-                    "valid": False
+                    "valid": False,
+                    "min_version": MIN_VERSION
                 })
 
             # Previous device timed out
@@ -343,13 +383,15 @@ def check_key(key):
         return jsonify({
             "key": key,
             "status": "active",
-            "valid": True
+            "valid": True,
+            "min_version": MIN_VERSION
         })
 
     return jsonify({
         "key": key,
         "status": "not_found",
-        "valid": False
+        "valid": False,
+        "min_version": MIN_VERSION
     })
 
 
@@ -555,6 +597,14 @@ body{
     text-decoration:none;
 }
 
+.version-badge{
+    position:absolute;
+    top:20px;
+    left:30px;
+    color:#94a3b8;
+    font-size:14px;
+}
+
 </style>
 
 </head>
@@ -564,6 +614,10 @@ body{
 <a href="/logout" class="logout">
 Logout
 </a>
+
+<div class="version-badge">
+Min app version: {{min_version}}
+</div>
 
 <div class="top">
 
@@ -813,7 +867,8 @@ function closeAdd(){
         keys=parsed,
         active=active,
         inactive=inactive,
-        total=len(parsed)
+        total=len(parsed),
+        min_version=MIN_VERSION
     )
 
 
