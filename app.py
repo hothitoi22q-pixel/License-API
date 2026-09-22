@@ -11,7 +11,6 @@ USERNAME = os.environ.get("ADMIN_USERNAME", "Jahid")
 PASSWORD = os.environ.get("ADMIN_PASSWORD", "@Jahid123#")
 
 FILE = "keys.txt"
-TIMEOUT = 60
 
 # =========================
 # App এর সর্বনিম্ন version -
@@ -341,36 +340,35 @@ def check_key(key):
                     "min_version": MIN_VERSION
                 })
 
-            # First activation
+            # First activation - এই device এর সাথে
+            # চিরস্থায়ীভাবে bind হয়ে যাবে
             if saved_device == "":
 
                 updated_keys.append(
                     f"{k}|{status}|{device}|{current_time}"
                 )
 
-            # Same device
+            # Same device - সবসময় allow
             elif saved_device == device:
 
                 updated_keys.append(
                     f"{k}|{status}|{device}|{current_time}"
                 )
 
-            # Another device currently running
-            elif current_time - last_time < TIMEOUT:
+            # =========================
+            # অন্য device - permanent lock,
+            # কতক্ষণ আগে ব্যবহার হয়েছিল সেটা
+            # বিবেচ্য না, কখনোই অন্য device
+            # নিতে পারবে না
+            # =========================
+            else:
 
                 return jsonify({
                     "key": k,
-                    "status": "already_running_on_other_device",
+                    "status": "locked_to_other_device",
                     "valid": False,
                     "min_version": MIN_VERSION
                 })
-
-            # Previous device timed out
-            else:
-
-                updated_keys.append(
-                    f"{k}|{status}|{device}|{current_time}"
-                )
 
         else:
 
