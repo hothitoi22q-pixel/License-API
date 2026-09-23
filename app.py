@@ -416,13 +416,11 @@ a.reset-btn:hover{background:#d97706;}
 <div class="key-row">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
 
-    {{/* Key + status */}}
     <div style="font-size:13px;font-weight:bold;min-width:160px;">
       {{k}} →
       <span style="color:{{'lime' if s=='active' else 'red'}};">{{s}}</span>
     </div>
 
-    {{/* Device ID */}}
     <div style="flex:1;min-width:120px;text-align:center;">
       {% if device %}
         <span style="font-size:11px;color:#94a3b8;font-family:monospace;background:#0f172a;padding:3px 8px;border-radius:4px;" title="{{device}}">
@@ -433,7 +431,6 @@ a.reset-btn:hover{background:#d97706;}
       {% endif %}
     </div>
 
-    {{/* Buttons */}}
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
       <a class="action" href="/toggle?toggle={{k}}&set=inactive"
          style="background:{{'red' if s=='inactive' else '#333'}};">OFF</a>
