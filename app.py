@@ -414,41 +414,40 @@ a.reset-btn:hover{background:#d97706;}
 
 {% for k, s, device in keys %}
 <div class="key-row">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
 
-  <div class="key-top">
-    <div>
+    {{/* Key + status */}}
+    <div style="font-size:13px;font-weight:bold;min-width:160px;">
       {{k}} →
       <span style="color:{{'lime' if s=='active' else 'red'}};">{{s}}</span>
     </div>
-    <div>
+
+    {{/* Device ID */}}
+    <div style="flex:1;min-width:120px;text-align:center;">
+      {% if device %}
+        <span style="font-size:11px;color:#94a3b8;font-family:monospace;background:#0f172a;padding:3px 8px;border-radius:4px;" title="{{device}}">
+          🖥️ {{device[:24]}}…
+        </span>
+      {% else %}
+        <span style="font-size:11px;color:#475569;font-style:italic;">⏳ No device</span>
+      {% endif %}
+    </div>
+
+    {{/* Buttons */}}
+    <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
       <a class="action" href="/toggle?toggle={{k}}&set=inactive"
          style="background:{{'red' if s=='inactive' else '#333'}};">OFF</a>
       <a class="action" href="/toggle?toggle={{k}}&set=active"
          style="background:{{'red' if s=='active' else '#333'}};">ON</a>
+      {% if device %}
+        <a class="reset-btn" href="/reset-device?key={{k}}"
+           onclick="return confirm('Device unlock করবে?')">🔓 Reset</a>
+      {% endif %}
       <a class="action" href="/delete?delete={{k}}"
          style="color:red;background:none;">Delete</a>
     </div>
-  </div>
 
-  <div class="device-row">
-    <div>
-      {% if device %}
-        🖥️ Device:
-        <span class="device-id" title="{{device}}">{{device}}</span>
-      {% else %}
-        <span class="no-device">⏳ No device yet</span>
-      {% endif %}
-    </div>
-    <div>
-      {% if device %}
-        <a class="reset-btn" href="/reset-device?key={{k}}"
-           onclick="return confirm('এই key এর device unlock করবে?')">
-          🔓 Reset Device
-        </a>
-      {% endif %}
-    </div>
   </div>
-
 </div>
 {% endfor %}
 
