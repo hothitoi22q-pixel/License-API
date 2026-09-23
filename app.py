@@ -12,13 +12,6 @@ PASSWORD = os.environ.get("ADMIN_PASSWORD", "@Jahid123#")
 
 FILE = "keys.txt"
 
-# =========================
-# App এর সর্বনিম্ন version -
-# এর নিচের version চলবে না।
-# রিডিপ্লয় ছাড়াই বদলাতে চাইলে
-# Railway এর Environment Variables
-# এ MIN_VERSION সেট করে দিলেই হবে
-# =========================
 MIN_VERSION = os.environ.get("MIN_VERSION", "1.0.0")
 
 
@@ -38,7 +31,6 @@ def is_version_outdated(client_version, min_version):
 def load_keys():
     if not os.path.exists(FILE):
         return []
-
     with open(FILE, "r", encoding="utf-8") as f:
         return [
             line.strip()
@@ -55,18 +47,13 @@ def save_keys(keys):
 # ================= LOGIN =================
 @app.route("/login", methods=["GET", "POST"])
 def login():
-
     error = ""
-
     if request.method == "POST":
-
         user = request.form.get("username", "")
         pw = request.form.get("password", "")
-
         if user == USERNAME and pw == PASSWORD:
             session["logged_in"] = True
             return redirect("/dashboard")
-
         error = "Wrong Login!"
 
     return render_template_string("""
@@ -74,85 +61,24 @@ def login():
 <html>
 <head>
 <title>Login</title>
-
 <style>
-body{
-    background:#0f172a;
-    color:white;
-    font-family:Arial;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    margin:0;
-}
-
-.box{
-    background:#1e293b;
-    padding:40px;
-    border-radius:15px;
-    text-align:center;
-    width:350px;
-    box-shadow:0 0 30px rgba(0,0,0,.5);
-}
-
-input{
-    width:100%;
-    padding:12px;
-    margin:10px 0;
-    border:none;
-    border-radius:8px;
-    box-sizing:border-box;
-}
-
-button{
-    width:100%;
-    padding:12px;
-    background:#22c55e;
-    border:none;
-    color:white;
-    border-radius:8px;
-    cursor:pointer;
-}
-
-.error{
-    color:#ff4444;
-}
+body{background:#0f172a;color:white;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
+.box{background:#1e293b;padding:40px;border-radius:15px;text-align:center;width:350px;box-shadow:0 0 30px rgba(0,0,0,.5);}
+input{width:100%;padding:12px;margin:10px 0;border:none;border-radius:8px;box-sizing:border-box;}
+button{width:100%;padding:12px;background:#22c55e;border:none;color:white;border-radius:8px;cursor:pointer;}
+.error{color:#ff4444;}
 </style>
 </head>
-
 <body>
-
 <div class="box">
-
 <h2>🔐 Admin Login</h2>
-
 <form method="POST">
-
-<input
-type="text"
-name="username"
-placeholder="Username"
-required
->
-
-<input
-type="password"
-name="password"
-placeholder="Password"
-required
->
-
-<button type="submit">
-Login
-</button>
-
+<input type="text" name="username" placeholder="Username" required>
+<input type="password" name="password" placeholder="Password" required>
+<button type="submit">Login</button>
 </form>
-
 <p class="error">{{error}}</p>
-
 </div>
-
 </body>
 </html>
 """, error=error)
@@ -161,51 +87,39 @@ Login
 # ================= LOGOUT =================
 @app.route("/logout")
 def logout():
-
     session.clear()
-
     return redirect("/login")
 
 
 # ================= ROOT =================
 @app.route("/")
 def home():
-
     return redirect("/dashboard")
 
 
 # ================= ADD KEY =================
 @app.route("/add", methods=["POST"])
 def add():
-
     if not session.get("logged_in"):
         return redirect("/login")
 
     key = request.form.get("new_key", "").strip().upper()
-
     if not key:
         return redirect("/dashboard")
 
     keys = load_keys()
-
-    # Duplicate check
     for line in keys:
-
         if line.split("|")[0] == key:
             return redirect("/dashboard")
 
-    # KEY FORMAT
     keys.append(f"{key}|active||0")
-
     save_keys(keys)
-
     return redirect("/dashboard")
 
 
 # ================= TOGGLE =================
 @app.route("/toggle")
 def toggle():
-
     if not session.get("logged_in"):
         return redirect("/login")
 
@@ -219,67 +133,84 @@ def toggle():
     new_keys = []
 
     for line in keys:
-
         parts = line.split("|")
-
         if len(parts) < 2:
             continue
-
         k = parts[0]
         s = parts[1]
-
         saved_device = parts[2] if len(parts) >= 3 else ""
         last_time = parts[3] if len(parts) >= 4 else "0"
 
         if k == key:
-
-            new_keys.append(
-                f"{k}|{set_status}|{saved_device}|{last_time}"
-            )
-
+            new_keys.append(f"{k}|{set_status}|{saved_device}|{last_time}")
         else:
-
             new_keys.append(line)
 
     save_keys(new_keys)
-
     return redirect("/dashboard")
 
 
 # ================= DELETE =================
 @app.route("/delete")
 def delete():
-
     if not session.get("logged_in"):
         return redirect("/login")
 
     key = request.args.get("delete", "")
-
     keys = load_keys()
-
     keys = [
-        line
-        for line in keys
+        line for line in keys
         if "|" in line and line.split("|")[0] != key
     ]
-
     save_keys(keys)
+    return redirect("/dashboard")
 
+
+# ================= RESET DEVICE =================
+# =========================
+# Admin এই route দিয়ে যেকোনো
+# key এর device unlock করতে
+# পারবে — পরের activation এ
+# নতুন device bind হবে
+# =========================
+@app.route("/reset-device")
+def reset_device():
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    key = request.args.get("key", "").strip().upper()
+    if not key:
+        return redirect("/dashboard")
+
+    keys = load_keys()
+    new_keys = []
+
+    for line in keys:
+        parts = line.split("|")
+        if len(parts) < 2:
+            continue
+        k = parts[0]
+        s = parts[1]
+        last_time = parts[3] if len(parts) >= 4 else "0"
+
+        if k == key:
+            # Device খালি করো — পরের activation এ নতুন device বসবে
+            new_keys.append(f"{k}|{s}||{last_time}")
+        else:
+            new_keys.append(line)
+
+    save_keys(new_keys)
     return redirect("/dashboard")
 
 
 # ================= CHECK API =================
 @app.route("/check/<key>")
 def check_key(key):
-
     key = key.strip().upper()
-
     device = request.args.get("device")
     client_version = request.args.get("version", "")
 
-    # Old version protection (no device param at all)
     if not device:
-
         return jsonify({
             "key": key,
             "status": "update_required",
@@ -287,14 +218,7 @@ def check_key(key):
             "min_version": MIN_VERSION
         })
 
-    # =========================
-    # Version gate - client এর
-    # version না পাঠালে বা
-    # MIN_VERSION এর চেয়ে কম হলে
-    # চালাতে দেওয়া হবে না
-    # =========================
     if not client_version or is_version_outdated(client_version, MIN_VERSION):
-
         return jsonify({
             "key": key,
             "status": "update_required",
@@ -303,22 +227,17 @@ def check_key(key):
         })
 
     keys = load_keys()
-
     current_time = int(time.time())
-
     updated_keys = []
     found = False
 
     for line in keys:
-
         parts = line.split("|")
-
         if len(parts) < 2:
             continue
 
         k = parts[0]
         status = parts[1]
-
         saved_device = parts[2] if len(parts) >= 3 else ""
 
         try:
@@ -327,12 +246,9 @@ def check_key(key):
             last_time = 0
 
         if k == key:
-
             found = True
 
-            # Inactive
             if status != "active":
-
                 return jsonify({
                     "key": k,
                     "status": status,
@@ -340,44 +256,28 @@ def check_key(key):
                     "min_version": MIN_VERSION
                 })
 
-            # First activation - এই device এর সাথে
-            # চিরস্থায়ীভাবে bind হয়ে যাবে
+            # প্রথম activation — device bind হবে
             if saved_device == "":
+                updated_keys.append(f"{k}|{status}|{device}|{current_time}")
 
-                updated_keys.append(
-                    f"{k}|{status}|{device}|{current_time}"
-                )
-
-            # Same device - সবসময় allow
+            # Same device — allow
             elif saved_device == device:
+                updated_keys.append(f"{k}|{status}|{device}|{current_time}")
 
-                updated_keys.append(
-                    f"{k}|{status}|{device}|{current_time}"
-                )
-
-            # =========================
-            # অন্য device - permanent lock,
-            # কতক্ষণ আগে ব্যবহার হয়েছিল সেটা
-            # বিবেচ্য না, কখনোই অন্য device
-            # নিতে পারবে না
-            # =========================
+            # অন্য device — block
             else:
-
                 return jsonify({
                     "key": k,
-                    "status": "locked_to_other_device",
+                    "status": "already_running_on_other_device",
                     "valid": False,
                     "min_version": MIN_VERSION
                 })
 
         else:
-
             updated_keys.append(line)
 
     if found:
-
         save_keys(updated_keys)
-
         return jsonify({
             "key": key,
             "status": "active",
@@ -397,79 +297,59 @@ def check_key(key):
 @app.route("/heartbeat")
 @app.route("/ping")
 def heartbeat():
-
     device = request.args.get("device")
     key = request.args.get("key", "").strip().upper()
 
-    # Server alive check
     if not device or not key:
-
-        return jsonify({
-            "status": "running"
-        })
+        return jsonify({"status": "running"})
 
     keys = load_keys()
-
     new_keys = []
-
     current_time = int(time.time())
 
     for line in keys:
-
         parts = line.split("|")
-
         if len(parts) < 2:
             continue
-
         k = parts[0]
         status = parts[1]
-
         saved_device = parts[2] if len(parts) >= 3 else ""
 
         if k == key and saved_device == device:
-
-            new_line = (
-                f"{k}|{status}|{device}|{current_time}"
-            )
-
-            new_keys.append(new_line)
-
+            new_keys.append(f"{k}|{status}|{device}|{current_time}")
         else:
-
             new_keys.append(line)
 
     save_keys(new_keys)
-
-    return jsonify({
-        "status": "ok"
-    })
+    return jsonify({"status": "ok"})
 
 
 # ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
-
     if not session.get("logged_in"):
         return redirect("/login")
 
     keys = load_keys()
-
     active = 0
     inactive = 0
-
     parsed = []
 
     for line in keys:
-
         parts = line.split("|")
-
         if len(parts) < 2:
             continue
-
         k = parts[0]
         s = parts[1]
+        # =========================
+        # Device ID — প্রথম activation
+        # এর পরে এখানে দেখা যাবে।
+        # খালি মানে এখনো কোনো device
+        # activate করেনি
+        # =========================
+        device = parts[2] if len(parts) >= 3 else ""
 
-        parsed.append((k, s))
+        parsed.append((k, s, device))
 
         if s == "active":
             active += 1
@@ -479,384 +359,125 @@ def dashboard():
     return render_template_string("""
 <!DOCTYPE html>
 <html>
-
 <head>
-
 <title>License Dashboard</title>
-
 <style>
-
-body{
-    background:#0f172a;
-    font-family:Arial;
-    color:white;
-    padding:30px;
-}
-
-.top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:30px;
-}
-
-.grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:25px;
-}
-
-.box{
-    padding:50px;
-    border-radius:20px;
-    text-align:center;
-    font-size:35px;
-    font-weight:bold;
-}
-
-.red{
-    background:#ef4444;
-}
-
-.green{
-    background:#22c55e;
-}
-
-.cyan{
-    grid-column:1/3;
-    background:linear-gradient(
-        90deg,
-        #06b6d4,
-        #14b8a6
-    );
-}
-
-.btn-box{
-    padding:30px;
-    border-radius:15px;
-    font-size:22px;
-    font-weight:bold;
-    cursor:pointer;
-    text-align:center;
-}
-
-.yellow{
-    background:#84cc16;
-}
-
-.blue{
-    background:#3b82f6;
-}
-
-.popup{
-    display:none;
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,.7);
-}
-
-.popup-content{
-    background:#1e293b;
-    margin:5% auto;
-    padding:20px;
-    width:50%;
-    border-radius:15px;
-}
-
-.scroll-box{
-    max-height:400px;
-    overflow-y:auto;
-}
-
-.key-row{
-    background:#0f172a;
-    padding:12px;
-    margin:10px 0;
-    border-radius:10px;
-    display:flex;
-    justify-content:space-between;
-}
-
-.close{
-    float:right;
-    color:red;
-    cursor:pointer;
-    font-size:22px;
-}
-
-.logout{
-    position:absolute;
-    top:20px;
-    right:30px;
-    color:white;
-    text-decoration:none;
-}
-
-.version-badge{
-    position:absolute;
-    top:20px;
-    left:30px;
-    color:#94a3b8;
-    font-size:14px;
-}
-
+body{background:#0f172a;font-family:Arial;color:white;padding:30px;}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:25px;}
+.box{padding:50px;border-radius:20px;text-align:center;font-size:35px;font-weight:bold;}
+.red{background:#ef4444;}
+.green{background:#22c55e;}
+.cyan{grid-column:1/3;background:linear-gradient(90deg,#06b6d4,#14b8a6);}
+.btn-box{padding:30px;border-radius:15px;font-size:22px;font-weight:bold;cursor:pointer;text-align:center;}
+.yellow{background:#84cc16;}
+.blue{background:#3b82f6;}
+.popup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);}
+.popup-content{background:#1e293b;margin:5% auto;padding:20px;width:65%;border-radius:15px;}
+.scroll-box{max-height:400px;overflow-y:auto;}
+.key-row{background:#0f172a;padding:12px;margin:10px 0;border-radius:10px;}
+.key-top{display:flex;justify-content:space-between;align-items:center;}
+.device-row{margin-top:6px;font-size:12px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center;}
+.device-id{font-family:monospace;background:#1e293b;padding:3px 8px;border-radius:4px;font-size:11px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.no-device{color:#475569;font-style:italic;}
+.close{float:right;color:red;cursor:pointer;font-size:22px;}
+.logout{position:absolute;top:20px;right:30px;color:white;text-decoration:none;}
+.version-badge{position:absolute;top:20px;left:30px;color:#94a3b8;font-size:14px;}
+a.action{padding:5px 10px;color:white;border-radius:5px;text-decoration:none;font-size:13px;}
+a.reset-btn{padding:4px 10px;background:#f59e0b;color:#000;border-radius:5px;text-decoration:none;font-size:12px;font-weight:bold;}
+a.reset-btn:hover{background:#d97706;}
 </style>
-
 </head>
-
 <body>
 
-<a href="/logout" class="logout">
-Logout
-</a>
-
-<div class="version-badge">
-Min app version: {{min_version}}
-</div>
+<a href="/logout" class="logout">Logout</a>
+<div class="version-badge">Min app version: {{min_version}}</div>
 
 <div class="top">
-
-<h1>
-🔥 License Dashboard
-</h1>
-
+<h1>🔥 License Dashboard</h1>
 </div>
-
 
 <div class="grid">
-
-<div class="box red">
-{{inactive}}
-<br>
-Inactive
+<div class="box red">{{inactive}}<br>Inactive</div>
+<div class="box green">{{active}}<br>Active</div>
+<div class="btn-box yellow" onclick="openManage()">Manage Key</div>
+<div class="btn-box blue" onclick="openAdd()">Generate Key</div>
+<div class="box cyan">{{total}}<br>All Key</div>
 </div>
-
-<div class="box green">
-{{active}}
-<br>
-Active
-</div>
-
-
-<div
-class="btn-box yellow"
-onclick="openManage()"
->
-Manage Key
-</div>
-
-
-<div
-class="btn-box blue"
-onclick="openAdd()"
->
-Generate Key
-</div>
-
-
-<div class="box cyan">
-
-{{total}}
-<br>
-All Key
-
-</div>
-
-</div>
-
 
 <!-- MANAGE -->
-
-<div
-id="managePopup"
-class="popup"
->
-
+<div id="managePopup" class="popup">
 <div class="popup-content">
-
-<span
-class="close"
-onclick="closeManage()"
->
-✖
-</span>
-
-<h2>
-🔑 Manage Key
-</h2>
-
+<span class="close" onclick="closeManage()">✖</span>
+<h2>🔑 Manage Key</h2>
 <div class="scroll-box">
 
-{% for k,s in keys %}
-
+{% for k, s, device in keys %}
 <div class="key-row">
 
-<div>
+  <div class="key-top">
+    <div>
+      {{k}} →
+      <span style="color:{{'lime' if s=='active' else 'red'}};">{{s}}</span>
+    </div>
+    <div>
+      <a class="action" href="/toggle?toggle={{k}}&set=inactive"
+         style="background:{{'red' if s=='inactive' else '#333'}};">OFF</a>
+      <a class="action" href="/toggle?toggle={{k}}&set=active"
+         style="background:{{'red' if s=='active' else '#333'}};">ON</a>
+      <a class="action" href="/delete?delete={{k}}"
+         style="color:red;background:none;">Delete</a>
+    </div>
+  </div>
 
-{{k}} →
-
-<span
-style="color:{{'lime' if s=='active' else 'red'}};"
->
-{{s}}
-</span>
-
-</div>
-
-
-<div>
-
-<a
-href="/toggle?toggle={{k}}&set=inactive"
-style="
-padding:5px 10px;
-background:{{'red' if s=='inactive' else '#333'}};
-color:white;
-border-radius:5px;
-text-decoration:none;
-"
->
-OFF
-</a>
-
-
-<a
-href="/toggle?toggle={{k}}&set=active"
-style="
-padding:5px 10px;
-background:{{'red' if s=='active' else '#333'}};
-color:white;
-border-radius:5px;
-text-decoration:none;
-"
->
-ON
-</a>
-
-
-<a
-href="/delete?delete={{k}}"
-style="
-color:red;
-margin-left:10px;
-"
->
-Delete
-</a>
+  <div class="device-row">
+    <div>
+      {% if device %}
+        🖥️ Device:
+        <span class="device-id" title="{{device}}">{{device}}</span>
+      {% else %}
+        <span class="no-device">⏳ No device yet</span>
+      {% endif %}
+    </div>
+    <div>
+      {% if device %}
+        <a class="reset-btn" href="/reset-device?key={{k}}"
+           onclick="return confirm('এই key এর device unlock করবে?')">
+          🔓 Reset Device
+        </a>
+      {% endif %}
+    </div>
+  </div>
 
 </div>
-
-</div>
-
 {% endfor %}
 
 </div>
-
 </div>
-
 </div>
-
 
 <!-- ADD -->
-
-<div
-id="addPopup"
-class="popup"
->
-
-<div
-class="popup-content"
-style="width:35%;text-align:center;"
->
-
-<span
-class="close"
-onclick="closeAdd()"
->
-✖
-</span>
-
-<h2>
-🔑 Add Key
-</h2>
-
-<form
-action="/add"
-method="POST"
->
-
-<input
-type="text"
-name="new_key"
-placeholder="Enter Key"
-style="
-width:80%;
-padding:10px;
-border-radius:8px;
-border:none;
-"
-required
->
-
+<div id="addPopup" class="popup">
+<div class="popup-content" style="width:35%;text-align:center;">
+<span class="close" onclick="closeAdd()">✖</span>
+<h2>🔑 Add Key</h2>
+<form action="/add" method="POST">
+<input type="text" name="new_key" placeholder="Enter Key"
+       style="width:80%;padding:10px;border-radius:8px;border:none;" required>
 <br><br>
-
-<button
-type="submit"
-style="
-padding:10px 25px;
-background:#16a34a;
-border:none;
-color:white;
-border-radius:8px;
-"
->
+<button type="submit"
+        style="padding:10px 25px;background:#16a34a;border:none;color:white;border-radius:8px;">
 Add
 </button>
-
 </form>
-
 </div>
-
 </div>
-
 
 <script>
-
-function openManage(){
-
-    document.getElementById(
-        "managePopup"
-    ).style.display="block";
-
-}
-
-function closeManage(){
-
-    document.getElementById(
-        "managePopup"
-    ).style.display="none";
-
-}
-
-function openAdd(){
-
-    document.getElementById(
-        "addPopup"
-    ).style.display="block";
-
-}
-
-function closeAdd(){
-
-    document.getElementById(
-        "addPopup"
-    ).style.display="none";
-
-}
-
+function openManage(){ document.getElementById("managePopup").style.display="block"; }
+function closeManage(){ document.getElementById("managePopup").style.display="none"; }
+function openAdd(){ document.getElementById("addPopup").style.display="block"; }
+function closeAdd(){ document.getElementById("addPopup").style.display="none"; }
 </script>
 
 </body>
@@ -872,10 +493,5 @@ function closeAdd(){
 
 # ================= RUN =================
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 10000))
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
+    app.run(host="0.0.0.0", port=port)
